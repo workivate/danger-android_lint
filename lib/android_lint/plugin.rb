@@ -91,6 +91,8 @@ module Danger
         message = message_for_issues(filtered_issues)
         markdown("### AndroidLint found issues\n\n" + message) unless message.to_s.empty?
       end
+      
+      filtered_issues
     end
 
     # A getter for `severity`, returning "Warning" if value is nil.
