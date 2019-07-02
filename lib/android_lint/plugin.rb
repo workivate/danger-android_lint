@@ -84,6 +84,8 @@ module Danger
       issues = read_issues_from_report
       filtered_issues = filter_issues_by_severity(issues)
 
+      message = ""
+      
       if inline_mode
         # Report with inline comment
         send_inline_comment(filtered_issues)
