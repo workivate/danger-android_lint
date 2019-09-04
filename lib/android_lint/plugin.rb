@@ -23,7 +23,6 @@ module Danger
   # @tags android, lint
   #
   class DangerAndroidLint < Plugin
-
     SEVERITY_LEVELS = ["Warning", "Error", "Fatal"]
 
     # Location of lint report file
@@ -34,7 +33,7 @@ module Danger
     # A getter for `report_file`.
     # @return [String]
     def report_file
-      return @report_file || 'app/build/reports/lint/lint-result.xml'
+      return @report_file || "app/build/reports/lint/lint-result.xml"
     end
 
     # Custom gradle task to run.
@@ -57,6 +56,10 @@ module Danger
     # Skip gradle task
     attr_accessor :skip_gradle_task
 
+    # These issue ids will always be reported even if they are not in the list of modified files
+    # @return [Array]
+    attr_writer :ids_to_always_report
+
     # Calls lint task of your gradle project.
     # It fails if `gradlew` cannot be found inside current directory.
     # It fails if `severity` level is not a valid option.
@@ -74,18 +77,18 @@ module Danger
         return
       end
 
-      system "./gradlew #{gradle_task || 'lint'}" unless skip_gradle_task
+      system "./gradlew #{gradle_task || "lint"}" unless skip_gradle_task
 
       unless File.exists?(report_file)
-        fail("Lint report not found at `#{report_file}`. "\
-          "Have you forgot to add `xmlReport true` to your `build.gradle` file?")
+        fail("Lint report not found at `#{report_file}`. " \
+        "Have you forgot to add `xmlReport true` to your `build.gradle` file?")
       end
 
       issues = read_issues_from_report
       filtered_issues = filter_issues_by_severity(issues)
 
       message = ""
-      
+
       if inline_mode
         # Report with inline comment
         send_inline_comment(filtered_issues)
@@ -93,7 +96,7 @@ module Danger
         message = message_for_issues(filtered_issues)
         markdown("### AndroidLint found issues\n\n" + message) unless message.to_s.empty?
       end
-      
+
       message
     end
 
@@ -103,15 +106,19 @@ module Danger
       @severity || SEVERITY_LEVELS.first
     end
 
+    def ids_to_always_report
+      @ids_to_always_report || []
+    end
+
     private
 
     def read_issues_from_report
       file = File.open(report_file)
 
-      require 'oga'
+      require "oga"
       report = Oga.parse_xml(file)
 
-      report.xpath('//issue')
+      report.xpath("//issue")
     end
 
     def filter_issues_by_severity(issues)
@@ -128,7 +135,7 @@ module Danger
       message = ""
 
       SEVERITY_LEVELS.reverse.each do |level|
-        filtered = issues.select{|issue| issue.get("severity") == level}
+        filtered = issues.select { |issue| issue.get("severity") == level }
         message << parse_results(filtered, level) unless filtered.empty?
       end
 
@@ -138,15 +145,16 @@ module Danger
     def parse_results(results, heading)
       target_files = (git.modified_files - git.deleted_files) + git.added_files
       dir = "#{Dir.pwd}/"
-      count = 0;
+      count = 0
       message = ""
 
       results.each do |r|
-        location = r.xpath('location').first
-        filename = location.get('file').gsub(dir, "")
-        next unless !filtering || (target_files.include? filename)
-        line = location.get('line') || 'N/A'
-        reason = r.get('message')
+        location = r.xpath("location").first
+        filename = location.get("file").gsub(dir, "")
+        id = r.get("id")
+        next unless !filtering || (target_files.include? filename) || (ids_to_always_report.include? id)
+        line = location.get("line") || "N/A"
+        reason = r.get("message")
         count = count + 1
         message << "`#{filename}` | #{line} | #{reason} \n"
       end
@@ -160,22 +168,21 @@ module Danger
       message
     end
 
-
     # Send inline comment with danger's warn or fail method
     #
     # @return [void]
-    def send_inline_comment (issues)
+    def send_inline_comment(issues)
       target_files = (git.modified_files - git.deleted_files) + git.added_files
       dir = "#{Dir.pwd}/"
       SEVERITY_LEVELS.reverse.each do |level|
-        filtered = issues.select{|issue| issue.get("severity") == level}
+        filtered = issues.select { |issue| issue.get("severity") == level }
         next if filtered.empty?
         filtered.each do |r|
-          location = r.xpath('location').first
-          filename = location.get('file').gsub(dir, "")
+          location = r.xpath("location").first
+          filename = location.get("file").gsub(dir, "")
           next unless !filtering || (target_files.include? filename)
-          line = (location.get('line') || "0").to_i
-          send(level === "Warning" ? "warn" : "fail", r.get('message'), file: filename, line: line)
+          line = (location.get("line") || "0").to_i
+          send(level === "Warning" ? "warn" : "fail", r.get("message"), file: filename, line: line)
         end
       end
     end
