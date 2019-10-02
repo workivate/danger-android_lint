@@ -152,7 +152,11 @@ module Danger
         location = r.xpath("location").first
         filename = location.get("file").gsub(dir, "")
         id = r.get("id")
-        next unless !filtering || (target_files.include? filename) || (ids_to_always_report.include? id)
+
+        if(filtering && (!target_files.include? filename || !ids_to_always_report.include? id))
+          next
+        end
+
         line = location.get("line") || "N/A"
         reason = r.get("message")
         count = count + 1
