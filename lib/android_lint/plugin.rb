@@ -153,9 +153,9 @@ module Danger
         filename = location.get("file").gsub(dir, "")
         id = r.get("id")
 
-        # if (filtering && (!target_files.include?(filename) || !ids_to_always_report.include?(id)))
-        #   next
-        # end
+        if (filtering && (!target_files.include?(filename) && !ids_to_always_report.include?(id)))
+          next
+        end
 
         line = location.get("line") || "N/A"
         reason = r.get("message")
